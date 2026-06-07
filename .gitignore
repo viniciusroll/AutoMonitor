@@ -6,3 +6,6 @@ logs/
 exports/
 playwright-report/
 test-results/
+.coverage
+# Sessões autenticadas (cookies) — NUNCA versionar
+auth/

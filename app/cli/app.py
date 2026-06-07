@@ -22,7 +22,7 @@ from app.cli.helpers import (
     render_stats,
     render_vehicles,
 )
-from app.providers.registry import available_providers
+from app.providers.registry import available_providers, default_sources
 from app.services.monitor_service import MonitorService
 from app.services.search_service import SearchService
 from app.services.stats_service import StatsService
@@ -124,6 +124,15 @@ def search(
         transmission=transmission,
         color=color,
     )
+
+    # Aviso de pré-voo: o Facebook (provider padrão) exige sessão salva.
+    effective = sources or default_sources()
+    if "facebook" in effective and not settings.facebook_authenticated:
+        console.print(
+            "[yellow]Atenção:[/yellow] o Facebook Marketplace exige login e "
+            "nenhuma sessão foi encontrada. Rode [bold]python main.py login[/bold] "
+            "antes de buscar (ou use [bold]--source webmotors[/bold])."
+        )
 
     with console.status("[cyan]Buscando anúncios...[/cyan]"):
         with session_scope() as session:
@@ -259,3 +268,42 @@ def providers() -> None:
     console.print("[bold]Providers disponíveis:[/bold]")
     for source in available_providers():
         console.print(f"  • {source}")
+
+
+@app.command()
+def login(
+    url: Annotated[
+        str, typer.Option("--url", help="Página de login a abrir.")
+    ] = "https://www.facebook.com/login",
+    output: Annotated[
+        str | None,
+        typer.Option("--output", "-o", help="Arquivo de sessão a salvar."),
+    ] = None,
+) -> None:
+    """Abre um navegador para login manual e salva a sessão (cookies).
+
+    O Facebook Marketplace exige autenticação. Rode este comando uma vez,
+    faça login na janela que abrir e a sessão será reutilizada nas buscas.
+    """
+    from app.providers.browser import BrowserManager
+
+    destination = output or settings.facebook_auth_state
+    console.print(
+        "[cyan]Abrindo navegador para login...[/cyan] "
+        "Faça login e [bold]volte aqui[/bold]."
+    )
+    # Sempre com janela visível — o login é manual.
+    manager = BrowserManager(headless=False, navigation_timeout=120_000)
+    manager.start()
+    try:
+        with manager.new_page() as page:
+            page.goto(url, wait_until="domcontentloaded")
+            typer.prompt(
+                "Pressione ENTER aqui depois de concluir o login no navegador",
+                default="",
+                show_default=False,
+            )
+            path = manager.save_storage_state(destination)
+    finally:
+        manager.stop()
+    console.print(f"[green]Sessão salva em {path}.[/green]")

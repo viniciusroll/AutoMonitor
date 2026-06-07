@@ -60,6 +60,14 @@ Componentes principais:
 - Quando nenhuma fonte é especificada (`--source`), a busca usa os
   **providers padrão** — atualmente o **Facebook Marketplace**. O
   Webmotors continua registrado e disponível via `--source webmotors`.
+
+> **⚠️ Facebook Marketplace exige login.** Todas as URLs de busca/categoria
+> redirecionam para a página de login quando acessadas sem sessão. Por isso
+> o fluxo usa uma **sessão autenticada persistida** (cookies via
+> `storage_state` do Playwright): rode `python main.py login` **uma vez**,
+> autentique-se na janela do navegador e a sessão salva em
+> `auth/facebook_state.json` será reutilizada automaticamente. O diretório
+> `auth/` é ignorado pelo git (contém credenciais de sessão).
 - A coleta (`ScrapedVehicle`) é desacoplada da persistência (`Vehicle`).
 - Seletores resilientes: cada campo tem uma **lista** de seletores
   alternativos; se o site mudar uma classe, basta acrescentar outra.
@@ -124,6 +132,11 @@ Cada canal de alerta só é ativado quando suas variáveis estão preenchidas.
 ```bash
 # Inicializa/atualiza o schema do banco
 python main.py db-init
+
+# Login no Facebook (uma única vez) — o Marketplace exige autenticação.
+# Abre o navegador; faça login e tecle ENTER no terminal. A sessão
+# (cookies) é salva em auth/facebook_state.json e reutilizada nas buscas.
+python main.py login
 
 # Busca anúncios
 python main.py search --brand "Honda" --model "Civic" --year-min 2018 --km-max 80000 --price-max 95000
@@ -223,7 +236,8 @@ SMTP/HTTP e CLI — são validadas por integração manual).
 | `playwright._impl...Executable doesn't exist` | Rode `playwright install chromium`. |
 | `make_metavar() missing ... 'ctx'` (Typer) | Use `click<8.2` (já fixado em `requirements.txt`). |
 | Navegador não abre / fica travado | Defina `HEADLESS=false` no `.env` para depurar visualmente. |
-| Facebook abre modal de login e não mostra anúncios | O Marketplace exibe um *modal* de login sobre a grade; o provider tenta dispensá-lo, mas em alguns casos é preciso `HEADLESS=false` e/ou estar logado no navegador. A grade de resultados costuma ficar visível mesmo sem login. |
+| Facebook redireciona para `/login` e coleta 0 anúncios | O Marketplace exige sessão autenticada. Rode `python main.py login` uma vez para salvar os cookies; as buscas seguintes reutilizam essa sessão. |
+| Sessão do Facebook expirou | Rode `python main.py login` novamente para regenerar `auth/facebook_state.json`. |
 | Nenhum anúncio coletado | O layout do site pode ter mudado; ajuste os seletores em `app/providers/facebook.py` ou `app/providers/webmotors.py` (listas de alternativas / seletores estáveis). |
 | Timeouts frequentes | Aumente `NAVIGATION_TIMEOUT` no `.env`. |
 | Alertas não chegam | Confirme as variáveis do canal no `.env`; rode `python main.py stats` para ver notificações registradas. |

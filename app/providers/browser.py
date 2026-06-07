@@ -11,6 +11,7 @@ import random
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from pathlib import Path
 from typing import TypeVar
 
 from playwright.sync_api import (
@@ -60,6 +61,7 @@ class BrowserManager:
         headless: bool | None = None,
         navigation_timeout: int | None = None,
         user_agent: str | None = None,
+        storage_state: str | Path | None = None,
     ) -> None:
         self._headless = settings.headless if headless is None else headless
         self._navigation_timeout = (
@@ -68,6 +70,7 @@ class BrowserManager:
             else navigation_timeout
         )
         self._forced_user_agent = user_agent
+        self._storage_state = Path(storage_state) if storage_state else None
 
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
@@ -100,11 +103,18 @@ class BrowserManager:
                     "--disable-dev-shm-usage",
                 ],
             )
+            # Reaproveita uma sessão autenticada (cookies), se existir.
+            state_arg: dict[str, object] = {}
+            if self._storage_state and self._storage_state.exists():
+                state_arg["storage_state"] = str(self._storage_state)
+                logger.debug(f"Carregando sessão de {self._storage_state}.")
+
             self._context = self._browser.new_context(
                 user_agent=user_agent,
                 locale="pt-BR",
                 viewport={"width": 1366, "height": 900},
                 ignore_https_errors=True,
+                **state_arg,
             )
             self._context.set_default_navigation_timeout(self._navigation_timeout)
             self._context.set_default_timeout(self._navigation_timeout)
@@ -144,6 +154,20 @@ class BrowserManager:
                 page.close()
             except Exception:  # pragma: no cover
                 pass
+
+    def save_storage_state(self, path: str | Path) -> Path:
+        """Salva a sessão atual (cookies/localStorage) em ``path``.
+
+        Raises:
+            ProviderError: se o navegador não estiver iniciado.
+        """
+        if self._context is None:
+            raise ProviderError("BrowserManager não foi iniciado (use start()).")
+        destination = Path(path)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        self._context.storage_state(path=str(destination))
+        logger.info(f"Sessão salva em {destination}.")
+        return destination
 
     def goto(self, page: Page, url: str, *, wait_until: str = "domcontentloaded") -> None:
         """Navega até ``url`` tratando *timeout* de forma tipada.

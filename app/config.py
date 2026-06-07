@@ -26,6 +26,9 @@ BASE_DIR: Path = Path(__file__).resolve().parent.parent
 # Diretórios de saída garantidos em tempo de import.
 LOGS_DIR: Path = BASE_DIR / "logs"
 EXPORTS_DIR: Path = BASE_DIR / "exports"
+# Diretório de sessões autenticadas do Playwright (cookies). Sensível —
+# nunca versionar.
+AUTH_DIR: Path = BASE_DIR / "auth"
 
 
 class Settings(BaseSettings):
@@ -48,6 +51,12 @@ class Settings(BaseSettings):
     headless: bool = Field(default=True)
     max_results: int = Field(default=100, ge=1, le=10_000)
     navigation_timeout: int = Field(default=30_000, ge=1_000)
+
+    # --- Sessões autenticadas ---
+    facebook_auth_state: str = Field(
+        default="auth/facebook_state.json",
+        description="Arquivo com a sessão (cookies) autenticada do Facebook.",
+    )
 
     # --- Telegram ---
     telegram_token: str | None = Field(default=None)
@@ -109,6 +118,17 @@ class Settings(BaseSettings):
         return EXPORTS_DIR
 
     @property
+    def facebook_auth_path(self) -> Path:
+        """Caminho absoluto do arquivo de sessão do Facebook."""
+        path = Path(self.facebook_auth_state)
+        return path if path.is_absolute() else BASE_DIR / path
+
+    @property
+    def facebook_authenticated(self) -> bool:
+        """Indica se há uma sessão do Facebook salva."""
+        return self.facebook_auth_path.exists()
+
+    @property
     def telegram_enabled(self) -> bool:
         return bool(self.telegram_token and self.telegram_chat_id)
 
@@ -126,6 +146,7 @@ def get_settings() -> Settings:
     """Retorna a instância única de :class:`Settings` (cacheada)."""
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
     EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
+    AUTH_DIR.mkdir(parents=True, exist_ok=True)
     return Settings()
 
 

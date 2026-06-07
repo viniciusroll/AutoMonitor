@@ -22,6 +22,7 @@ from urllib.parse import urlencode
 
 from playwright.sync_api import ElementHandle, Page
 
+from app.config import settings
 from app.filters.vehicle_filter import VehicleFilter
 from app.models.vehicle import ScrapedVehicle
 from app.providers.base import BaseVehicleProvider
@@ -40,6 +41,7 @@ class FacebookProvider(BaseVehicleProvider):
     source = "facebook"
     display_name = "Facebook Marketplace"
     base_url = "https://www.facebook.com"
+    auth_state_path = str(settings.facebook_auth_path)
 
     # ------------------------------------------------------------------
     # Construção da URL de busca
@@ -85,7 +87,17 @@ class FacebookProvider(BaseVehicleProvider):
         return _ITEM_SELECTOR
 
     def prepare_page(self, page: Page) -> None:
-        """Dispensa o modal de login e restaura a rolagem da página."""
+        """Dispensa o modal de login e restaura a rolagem da página.
+
+        Se o Facebook redirecionar para a página de login (sessão ausente
+        ou expirada), emite um aviso claro com a instrução de correção.
+        """
+        if "/login" in page.url:
+            self.logger.warning(
+                "Facebook exigiu login — sessão ausente ou expirada. "
+                "Autentique-se uma vez com: python main.py login"
+            )
+            return
         # Fecha qualquer diálogo (login/cookies) pressionando Escape.
         try:
             page.keyboard.press("Escape")

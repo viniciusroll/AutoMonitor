@@ -41,6 +41,8 @@ class BaseVehicleProvider(ABC):
     display_name: str = "Base"
     #: URL base do marketplace.
     base_url: str = ""
+    #: Caminho da sessão autenticada (cookies). ``None`` = site público.
+    auth_state_path: str | None = None
 
     def __init__(self, browser: BrowserManager | None = None) -> None:
         self._external_browser = browser is not None
@@ -113,7 +115,7 @@ class BaseVehicleProvider(ABC):
         if self._browser is not None:
             return self._search_with_browser(self._browser, vehicle_filter, limit)
 
-        with BrowserManager() as browser:
+        with BrowserManager(storage_state=self.auth_state_path) as browser:
             self._browser = browser
             try:
                 return self._search_with_browser(browser, vehicle_filter, limit)
