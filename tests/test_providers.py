@@ -33,8 +33,17 @@ def test_get_provider_desconhecido() -> None:
         get_provider("inexistente")
 
 
-def test_get_providers_todos() -> None:
-    assert len(get_providers()) == len(available_providers())
+def test_get_providers_usa_default_quando_none() -> None:
+    # Sem fontes especificadas, usa os providers padrão (Facebook).
+    from app.providers.registry import default_sources
+
+    defaults = {p.source for p in get_providers()}
+    assert defaults == set(default_sources())
+
+
+def test_get_providers_explicito() -> None:
+    sources = {p.source for p in get_providers(["webmotors", "facebook"])}
+    assert sources == {"webmotors", "facebook"}
 
 
 def test_register_provider_customizado() -> None:

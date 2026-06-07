@@ -8,12 +8,18 @@ from __future__ import annotations
 
 from app.exceptions import ProviderError
 from app.providers.base import BaseVehicleProvider
+from app.providers.facebook import FacebookProvider
 from app.providers.webmotors import WebmotorsProvider
 
 # Mapeia o identificador ``source`` para a classe do provider.
 _REGISTRY: dict[str, type[BaseVehicleProvider]] = {
+    FacebookProvider.source: FacebookProvider,
     WebmotorsProvider.source: WebmotorsProvider,
 }
+
+# Providers usados quando nenhuma fonte é especificada. O Facebook
+# Marketplace é o alvo principal do projeto.
+_DEFAULT_SOURCES: tuple[str, ...] = (FacebookProvider.source,)
 
 
 def register_provider(provider_cls: type[BaseVehicleProvider]) -> None:
@@ -24,6 +30,11 @@ def register_provider(provider_cls: type[BaseVehicleProvider]) -> None:
 def available_providers() -> list[str]:
     """Retorna os identificadores de todos os providers registrados."""
     return sorted(_REGISTRY)
+
+
+def default_sources() -> list[str]:
+    """Retorna os providers padrão (usados quando nenhum é especificado)."""
+    return [s for s in _DEFAULT_SOURCES if s in _REGISTRY]
 
 
 def get_provider(source: str) -> BaseVehicleProvider:
@@ -43,6 +54,10 @@ def get_provider(source: str) -> BaseVehicleProvider:
 
 
 def get_providers(sources: list[str] | None = None) -> list[BaseVehicleProvider]:
-    """Instancia vários providers; ``None`` retorna todos os registrados."""
-    selected = sources if sources is not None else available_providers()
+    """Instancia vários providers.
+
+    Se ``sources`` for ``None``, usa os providers padrão
+    (:func:`default_sources`) — por ora, apenas o Facebook Marketplace.
+    """
+    selected = sources if sources is not None else default_sources()
     return [get_provider(source) for source in selected]

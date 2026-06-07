@@ -44,7 +44,7 @@ Componentes principais:
 
 | Camada | Pasta | Responsabilidade |
 |--------|-------|------------------|
-| **Providers** | `app/providers/` | Coleta nos marketplaces. `BaseVehicleProvider` define o contrato; `WebmotorsProvider` é a implementação concreta. `BrowserManager` cuida de Playwright (scroll, retry, rotação de User-Agent). |
+| **Providers** | `app/providers/` | Coleta nos marketplaces. `BaseVehicleProvider` define o contrato; `FacebookProvider` (Facebook Marketplace — **provider padrão**) e `WebmotorsProvider` são as implementações concretas. `BrowserManager` cuida de Playwright (scroll, retry, rotação de User-Agent). |
 | **Models** | `app/models/` | Entidades ORM (`Vehicle`, `PriceHistory`, `Search`, `Notification`) e DTO `ScrapedVehicle` (Pydantic). |
 | **Filters** | `app/filters/` | `VehicleFilter` — critérios configuráveis e serializáveis. |
 | **Services** | `app/services/` | Casos de uso: dedup + histórico de preços, buscas salvas, orquestração e estatísticas. |
@@ -57,6 +57,9 @@ Componentes principais:
 
 - *Open/Closed*: adicionar um novo site = criar uma subclasse de
   `BaseVehicleProvider` e registrá-la em `app/providers/registry.py`.
+- Quando nenhuma fonte é especificada (`--source`), a busca usa os
+  **providers padrão** — atualmente o **Facebook Marketplace**. O
+  Webmotors continua registrado e disponível via `--source webmotors`.
 - A coleta (`ScrapedVehicle`) é desacoplada da persistência (`Vehicle`).
 - Seletores resilientes: cada campo tem uma **lista** de seletores
   alternativos; se o site mudar uma classe, basta acrescentar outra.
@@ -220,7 +223,8 @@ SMTP/HTTP e CLI — são validadas por integração manual).
 | `playwright._impl...Executable doesn't exist` | Rode `playwright install chromium`. |
 | `make_metavar() missing ... 'ctx'` (Typer) | Use `click<8.2` (já fixado em `requirements.txt`). |
 | Navegador não abre / fica travado | Defina `HEADLESS=false` no `.env` para depurar visualmente. |
-| Nenhum anúncio coletado | O layout do site pode ter mudado; ajuste os seletores em `app/providers/webmotors.py` (listas de alternativas). |
+| Facebook abre modal de login e não mostra anúncios | O Marketplace exibe um *modal* de login sobre a grade; o provider tenta dispensá-lo, mas em alguns casos é preciso `HEADLESS=false` e/ou estar logado no navegador. A grade de resultados costuma ficar visível mesmo sem login. |
+| Nenhum anúncio coletado | O layout do site pode ter mudado; ajuste os seletores em `app/providers/facebook.py` ou `app/providers/webmotors.py` (listas de alternativas / seletores estáveis). |
 | Timeouts frequentes | Aumente `NAVIGATION_TIMEOUT` no `.env`. |
 | Alertas não chegam | Confirme as variáveis do canal no `.env`; rode `python main.py stats` para ver notificações registradas. |
 | Banco "travado" (`database is locked`) | Evite execuções simultâneas sobre o mesmo arquivo SQLite. |
@@ -232,7 +236,7 @@ SMTP/HTTP e CLI — são validadas por integração manual).
 ```
 vehicle_monitor/
 ├── app/
-│   ├── providers/      # coleta (Playwright) — base, browser, webmotors, registry
+│   ├── providers/      # coleta (Playwright) — base, browser, facebook, webmotors, registry
 │   ├── database/       # engine, sessão, init_db
 │   ├── models/         # ORM + DTO + enums
 │   ├── services/       # casos de uso (monitor, search, vehicle, stats)
