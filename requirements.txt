@@ -7,6 +7,7 @@ python-dotenv==1.0.1
 
 # --- CLI / UX ---
 typer==0.13.1
+click==8.1.8  # Typer 0.13.x requer click<8.2 (8.2 alterou make_metavar)
 rich==13.9.4
 loguru==0.7.2
 

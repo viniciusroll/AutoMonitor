@@ -117,10 +117,13 @@ class VehicleService:
             vehicle.price = item.price
 
         # Atualiza campos potencialmente voláteis.
-        for attr in ("title", "mileage", "city", "state", "photo_count", "url"):
+        for attr in ("title", "mileage", "city", "state", "photo_count"):
             value = getattr(item, attr, None)
             if value is not None:
                 setattr(vehicle, attr, value)
+        # ``url`` é um HttpUrl no DTO; persiste-se como string.
+        if item.url is not None:
+            vehicle.url = str(item.url)
 
         vehicle.last_seen_at = _utcnow()
         vehicle.is_active = True
