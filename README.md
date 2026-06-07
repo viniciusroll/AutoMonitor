@@ -153,6 +153,13 @@ python main.py export --format excel
 # Estatísticas
 python main.py stats
 
+# Listar os anúncios salvos (com ID e link clicável)
+python main.py list
+
+# Abrir um anúncio no navegador (pelo ID que aparece no list/search)
+python main.py open 1
+python main.py open 1 --print   # apenas imprime a URL, sem abrir
+
 # Ajuda de qualquer comando
 python main.py search --help
 ```

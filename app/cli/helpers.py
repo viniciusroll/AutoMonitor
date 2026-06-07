@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from app.filters.vehicle_filter import VehicleFilter
@@ -71,7 +72,7 @@ def render_vehicles(vehicles: Sequence[Vehicle], *, title: str = "Veículos") ->
         local = " - ".join(p for p in (vehicle.city, vehicle.state) if p) or "—"
         table.add_row(
             str(vehicle.id),
-            vehicle.title or "—",
+            _title_cell(vehicle),
             str(vehicle.year or "—"),
             f"{vehicle.mileage:,}".replace(",", ".") if vehicle.mileage else "—",
             _fmt_price(vehicle.price),
@@ -79,6 +80,18 @@ def render_vehicles(vehicles: Sequence[Vehicle], *, title: str = "Veículos") ->
             vehicle.source,
         )
     console.print(table)
+    console.print(
+        "[dim]Dica: clique no título (Ctrl/Cmd+clique) para abrir, ou use "
+        "[bold]python main.py open <ID>[/bold].[/dim]"
+    )
+
+
+def _title_cell(vehicle: Vehicle) -> str:
+    """Renderiza o título como hyperlink clicável (OSC 8), quando há URL."""
+    title = escape(vehicle.title or "—")
+    if vehicle.url:
+        return f"[link={vehicle.url}]{title}[/link]"
+    return title
 
 
 def render_stats(stats: Stats) -> None:

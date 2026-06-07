@@ -22,6 +22,7 @@ from app.cli.helpers import (
     render_stats,
     render_vehicles,
 )
+from app.models.vehicle import Vehicle
 from app.providers.registry import available_providers, default_sources
 from app.services.monitor_service import MonitorService
 from app.services.search_service import SearchService
@@ -262,6 +263,59 @@ def stats() -> None:
     """Exibe estatísticas agregadas do banco de dados."""
     with session_scope() as session:
         render_stats(StatsService(session).compute())
+
+
+# ----------------------------------------------------------------------
+# list
+# ----------------------------------------------------------------------
+@app.command("list")
+def list_vehicles(
+    source: Annotated[
+        str | None, typer.Option("--source", "-s", help="Filtra por fonte.")
+    ] = None,
+    limit: Annotated[
+        int, typer.Option("--limit", "-n", help="Máx. de anúncios.")
+    ] = 30,
+) -> None:
+    """Lista os anúncios já salvos (com ID e link clicável)."""
+    with session_scope() as session:
+        vehicles = list(
+            VehicleService(session).list_vehicles(source=source, limit=limit)
+        )
+    if not vehicles:
+        console.print("[yellow]Nenhum anúncio salvo. Rode uma busca antes.[/yellow]")
+        return
+    render_vehicles(vehicles, title="Anúncios salvos")
+
+
+# ----------------------------------------------------------------------
+# open
+# ----------------------------------------------------------------------
+@app.command("open")
+def open_listing(
+    vehicle_id: Annotated[int, typer.Argument(help="ID do anúncio (veja em list).")],
+    print_only: Annotated[
+        bool, typer.Option("--print", help="Apenas imprime a URL, não abre.")
+    ] = False,
+) -> None:
+    """Abre o anúncio de um veículo (pelo ID) no navegador padrão."""
+    url: str | None = None
+    title: str | None = None
+    with session_scope() as session:
+        vehicle = session.get(Vehicle, vehicle_id)
+        if vehicle is not None:
+            url, title = vehicle.url, vehicle.title
+
+    if url is None:
+        console.print(f"[red]Anúncio {vehicle_id} não encontrado.[/red]")
+        raise typer.Exit(code=1)
+
+    console.print(f"[bold]{title}[/bold]\n[link={url}]{url}[/link]")
+    if not print_only:
+        import webbrowser
+
+        webbrowser.open(url)
+        console.print("[green]Abrindo no navegador...[/green]")
 
 
 # ----------------------------------------------------------------------
