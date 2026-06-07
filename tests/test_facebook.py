@@ -65,7 +65,12 @@ def test_first_price(lines, esperado) -> None:
 
 @pytest.mark.parametrize(
     ("linha", "esperado"),
-    [("80K km", 80_000), ("45.000 km", 45_000), ("Honda Civic", None)],
+    [
+        ("80K km", 80_000),
+        ("206 mil km", 206_000),  # formato do Facebook (mil = milhar)
+        ("45.000 km", 45_000),  # "km" não deve ser tratado como multiplicador
+        ("Honda Civic", None),
+    ],
 )
 def test_normalize_mileage(linha, esperado) -> None:
     assert _normalize_mileage(linha) == esperado
@@ -99,3 +104,15 @@ def test_pick_title_descarta_preco_e_local() -> None:
 def test_brand_model() -> None:
     assert _brand_model("Honda Civic EXL") == ("Honda", "Civic")
     assert _brand_model("Fusca") == ("Fusca", None)
+
+
+def test_brand_model_descarta_ano_no_inicio() -> None:
+    # O Facebook prefixa o ano: "2019 Honda Civic" -> marca Honda, modelo Civic.
+    assert _brand_model("2009 Honda Civic") == ("Honda", "Civic")
+    assert _brand_model("2016 Honda Civic 2.0 LXR") == ("Honda", "Civic")
+
+
+def test_pick_title_formato_facebook() -> None:
+    # Linhas reais de um card do Facebook (preço / título / local / km).
+    lines = ["R$39.000", "2009 Honda Civic", "Campinas, SP", "206 mil km"]
+    assert _pick_title(lines, price=39_000) == "2009 Honda Civic"

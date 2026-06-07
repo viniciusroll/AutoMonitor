@@ -187,22 +187,28 @@ def _first_price(lines: list[str]) -> float | None:
 
 
 def _first_mileage(lines: list[str]) -> int | None:
+    # A linha de quilometragem do Facebook sempre contém "km"
+    # (ex.: "206 mil km", "80K km", "45.000 km").
     for line in lines:
-        lowered = line.lower()
-        if "km" in lowered or "mil" in lowered:
+        if "km" in line.lower():
             mileage = _normalize_mileage(line)
             if mileage is not None:
                 return mileage
     return None
 
 
+# "206 mil km" / "80k km" -> multiplicador de milhar. O ``k`` de "km" é
+# excluído pelo lookahead negativo ``(?!m)``.
+_THOUSAND_RE = re.compile(r"(\d[\d.,]*)\s*(?:mil|k(?!m))", re.IGNORECASE)
+
+
 def _normalize_mileage(line: str) -> int | None:
-    """Interpreta ``80K km`` / ``80.000 km`` como inteiro de quilômetros."""
-    lowered = line.lower()
-    if "k km" in lowered or re.search(r"\d+\s*k\b", lowered):
-        digits = parse_int(re.split(r"k", lowered)[0])
-        if digits is not None:
-            return digits * 1_000
+    """Interpreta ``206 mil km`` / ``80K km`` / ``45.000 km`` em km inteiros."""
+    match = _THOUSAND_RE.search(line)
+    if match:
+        base = parse_int(match.group(1))
+        if base is not None:
+            return base * 1_000
     return parse_int(line)
 
 
@@ -226,7 +232,9 @@ def _pick_title(lines: list[str], *, price: float | None) -> str | None:
             continue
         if _LOCATION_RE.match(line):
             continue
-        if re.fullmatch(r"[\d.\skm]+", line.lower()):
+        if "km" in line.lower():  # linha de quilometragem
+            continue
+        if re.fullmatch(r"[\d.\s]+", line):  # linha só de números
             continue
         candidates.append(line)
     if not candidates:
@@ -234,11 +242,20 @@ def _pick_title(lines: list[str], *, price: float | None) -> str | None:
     return max(candidates, key=len)
 
 
+_YEAR_TOKEN_RE = re.compile(r"^(19|20)\d{2}$")
+
+
 def _brand_model(title: str) -> tuple[str | None, str | None]:
-    """Heurística simples: 1ª palavra = marca, 2ª = modelo."""
-    parts = title.split()
-    if not parts:
+    """Extrai marca e modelo do título.
+
+    O Facebook costuma prefixar o ano (``2019 Honda Civic EXL``); o ano
+    inicial é descartado antes de tomar 1ª palavra = marca e 2ª = modelo.
+    """
+    tokens = title.split()
+    if tokens and _YEAR_TOKEN_RE.match(tokens[0]):
+        tokens = tokens[1:]
+    if not tokens:
         return None, None
-    brand = parts[0]
-    model = parts[1] if len(parts) > 1 else None
+    brand = tokens[0]
+    model = tokens[1] if len(tokens) > 1 else None
     return brand, model

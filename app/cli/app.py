@@ -145,14 +145,19 @@ def search(
             )
             if save:
                 SearchService(session).create(save, vehicle_filter)
+            # Veículos persistidos (com ID); attrs seguem acessíveis após
+            # o commit graças a expire_on_commit=False.
+            persisted = (
+                result.report.new_vehicles + result.report.updated_vehicles
+                if result.report
+                else []
+            )
 
     console.print(
         f"[green]{result.new_count} novos[/green], "
         f"[yellow]{result.price_drop_count} reduções de preço[/yellow]."
     )
-    render_vehicles(
-        [v.to_orm() for v in result.scraped], title="Resultados da busca"
-    )
+    render_vehicles(persisted, title="Resultados da busca")
     if save:
         console.print(f"[blue]Busca salva como {save!r}.[/blue]")
 
