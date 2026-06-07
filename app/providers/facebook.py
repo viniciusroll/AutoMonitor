@@ -18,6 +18,7 @@ O Facebook renderiza os anúncios dinamicamente e costuma exibir um
 from __future__ import annotations
 
 import re
+import unicodedata
 from urllib.parse import urlencode
 
 from playwright.sync_api import ElementHandle, Page
@@ -72,13 +73,32 @@ class FacebookProvider(BaseVehicleProvider):
         if vehicle_filter.mileage_max is not None:
             params["maxMileage"] = vehicle_filter.mileage_max
 
-        # Busca na categoria de veículos quando há termo; caso contrário,
-        # navega direto na categoria de veículos.
-        if query:
+        # A localização no Facebook é definida pelo *slug* da cidade no
+        # caminho (ex.: /marketplace/saopaulo/search). O raio numérico não
+        # é suportado via URL — a "distância" equivale à região da cidade.
+        if vehicle_filter.distance_max is not None and vehicle_filter.city is None:
+            self.logger.warning(
+                "Facebook não aceita raio numérico via URL e nenhuma cidade "
+                "foi informada; usando a localização salva na conta."
+            )
+        slug = _city_slug(vehicle_filter.city) if vehicle_filter.city else None
+        if slug:
+            path = f"/marketplace/{slug}/search"
+        elif query:
             path = "/marketplace/search"
         else:
             path = "/marketplace/category/vehicles"
         return [f"{self.base_url}{path}?{urlencode(params)}"]
+
+    def matching_filter(self, vehicle_filter: VehicleFilter) -> VehicleFilter:
+        """A cidade já restringe a localização na URL do Facebook.
+
+        Não reaplica o critério de cidade localmente, para que toda a
+        região metropolitana retornada (o "raio" aproximado) seja mantida.
+        """
+        if vehicle_filter.city is None:
+            return vehicle_filter
+        return vehicle_filter.model_copy(update={"city": None})
 
     # ------------------------------------------------------------------
     # Seletor / preparação da página
@@ -163,6 +183,18 @@ class FacebookProvider(BaseVehicleProvider):
 # ----------------------------------------------------------------------
 # Helpers de parsing (puros, testáveis sem navegador)
 # ----------------------------------------------------------------------
+def _city_slug(city: str) -> str:
+    """Converte o nome de uma cidade no *slug* de localização do Facebook.
+
+    Remove acentos, espaços e pontuação e deixa em minúsculas
+    (ex.: ``"São Paulo"`` -> ``"saopaulo"``;
+    ``"Rio de Janeiro"`` -> ``"riodejaneiro"``).
+    """
+    normalized = unicodedata.normalize("NFKD", city)
+    ascii_only = normalized.encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]", "", ascii_only.lower())
+
+
 def _text_lines(element: ElementHandle) -> list[str]:
     """Extrai as linhas de texto não vazias do cartão do anúncio."""
     try:

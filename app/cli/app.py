@@ -48,8 +48,12 @@ YearMaxOpt = Annotated[int | None, typer.Option("--year-max", help="Ano máximo.
 KmMaxOpt = Annotated[int | None, typer.Option("--km-max", help="Km máxima.")]
 PriceMinOpt = Annotated[float | None, typer.Option("--price-min", help="Preço mín.")]
 PriceMaxOpt = Annotated[float | None, typer.Option("--price-max", help="Preço máx.")]
-CityOpt = Annotated[str | None, typer.Option("--city", help="Cidade.")]
+CityOpt = Annotated[str | None, typer.Option("--city", help="Cidade (define a região no Facebook).")]
 StateOpt = Annotated[str | None, typer.Option("--state", help="UF (2 letras).")]
+DistanceMaxOpt = Annotated[
+    float | None,
+    typer.Option("--distance-max", help="Raio em km (aprox.: região da cidade no Facebook)."),
+]
 FuelOpt = Annotated[str | None, typer.Option("--fuel", help="Combustível.")]
 TransOpt = Annotated[str | None, typer.Option("--transmission", help="Câmbio.")]
 ColorOpt = Annotated[str | None, typer.Option("--color", help="Cor.")]
@@ -95,6 +99,7 @@ def search(
     price_max: PriceMaxOpt = None,
     city: CityOpt = None,
     state: StateOpt = None,
+    distance_max: DistanceMaxOpt = None,
     fuel: FuelOpt = None,
     transmission: TransOpt = None,
     color: ColorOpt = None,
@@ -121,6 +126,7 @@ def search(
         price_max=price_max,
         city=city,
         state=state,
+        distance_max=distance_max,
         fuel=fuel,
         transmission=transmission,
         color=color,

@@ -8,6 +8,7 @@ from app.filters.vehicle_filter import VehicleFilter
 from app.providers.facebook import (
     FacebookProvider,
     _brand_model,
+    _city_slug,
     _first_location,
     _first_mileage,
     _first_price,
@@ -45,6 +46,47 @@ def test_build_search_url_usa_endpoint_de_busca_com_query() -> None:
 def test_build_search_url_sem_query_usa_categoria_veiculos() -> None:
     urls = FacebookProvider().build_search_urls(VehicleFilter())
     assert "/marketplace/category/vehicles" in urls[0]
+
+
+@pytest.mark.parametrize(
+    ("cidade", "slug"),
+    [
+        ("São Paulo", "saopaulo"),
+        ("Rio de Janeiro", "riodejaneiro"),
+        ("Belo Horizonte", "belohorizonte"),
+    ],
+)
+def test_city_slug(cidade, slug) -> None:
+    assert _city_slug(cidade) == slug
+
+
+def test_build_search_url_usa_cidade_como_localizacao() -> None:
+    urls = FacebookProvider().build_search_urls(
+        VehicleFilter(brand="Honda", model="Civic", city="São Paulo")
+    )
+    assert "/marketplace/saopaulo/search" in urls[0]
+
+
+def test_build_search_url_inclui_preco_minimo() -> None:
+    urls = FacebookProvider().build_search_urls(
+        VehicleFilter(price_min=30_000, price_max=95_000)
+    )
+    assert "minPrice=30000" in urls[0]
+    assert "maxPrice=95000" in urls[0]
+
+
+def test_matching_filter_remove_cidade() -> None:
+    # A cidade já restringe a localização na URL; não deve ser reaplicada.
+    provider = FacebookProvider()
+    flt = VehicleFilter(brand="Honda", city="São Paulo")
+    ajustado = provider.matching_filter(flt)
+    assert ajustado.city is None
+    assert ajustado.brand == "Honda"  # demais critérios preservados
+
+
+def test_matching_filter_sem_cidade_inalterado() -> None:
+    flt = VehicleFilter(brand="Honda")
+    assert FacebookProvider().matching_filter(flt) is flt
 
 
 def test_item_selector_e_link_de_item() -> None:

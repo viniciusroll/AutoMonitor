@@ -167,8 +167,21 @@ python main.py search --help
 ### Opções de filtro do `search`
 
 `--brand` `--model` `--version` `--year-min` `--year-max` `--km-max`
-`--price-min` `--price-max` `--city` `--state` `--fuel` `--transmission`
-`--color` `--source` `--max` `--save <nome>` `--notify`
+`--price-min` `--price-max` `--city` `--state` `--distance-max` `--fuel`
+`--transmission` `--color` `--source` `--max` `--save <nome>` `--notify`
+
+**Cidade, raio e preço no Facebook Marketplace:**
+
+- `--city` define a **localização** da busca no Facebook (ex.: `--city "São Paulo"`
+  → resultados da região de São Paulo). A busca abrange a **região
+  metropolitana** da cidade — esse é, na prática, o "raio".
+- `--price-min` / `--price-max` são enviados ao Facebook (`minPrice`/`maxPrice`),
+  assim como `--year-min`/`--year-max` (`minYear`/`maxYear`) e `--km-max`
+  (`maxMileage`).
+- `--distance-max` (raio em km) é **aproximado**: o Facebook não aceita raio
+  numérico via URL, então a distância é representada pela região da cidade
+  escolhida. O valor é preservado nas buscas salvas e pode ser usado por
+  outros providers no futuro.
 
 ---
 

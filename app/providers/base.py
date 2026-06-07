@@ -72,6 +72,16 @@ class BaseVehicleProvider(ABC):
     # ------------------------------------------------------------------
     # Ganchos opcionais (com implementação padrão)
     # ------------------------------------------------------------------
+    def matching_filter(self, vehicle_filter: VehicleFilter) -> VehicleFilter:
+        """Filtro usado na filtragem local dos resultados coletados.
+
+        Por padrão, é o próprio filtro da busca. Providers que já impõem
+        algum critério no lado do servidor (ex.: o Facebook restringe a
+        localização pela cidade na URL) podem sobrescrever este gancho
+        para não reaplicar esse critério localmente.
+        """
+        return vehicle_filter
+
     def prepare_page(self, page: Page) -> None:
         """Gancho executado após a navegação (ex.: fechar *cookie banner*)."""
 
@@ -151,7 +161,8 @@ class BaseVehicleProvider(ABC):
                 if len(collected) >= limit:
                     break
 
-        result = [v for v in collected.values() if vehicle_filter.matches(v)]
+        match_filter = self.matching_filter(vehicle_filter)
+        result = [v for v in collected.values() if match_filter.matches(v)]
         self.logger.info(
             f"[{self.source}] Coletados {len(collected)} anúncios, "
             f"{len(result)} após filtragem."
